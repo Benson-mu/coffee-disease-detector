@@ -1,0 +1,10 @@
+// Step 1 you create the coffeescan-ai folder and the backend and frontend subfolders
+
+//Open them in integrated terminal
+
+//Install node from the node website. It comes with a package inaitwa npm(node package manager) that you use to 
+        install dependencies
+
+// Inside each folder create a .gitignore file manually that will prevent pushing some files to github eg node modules
+
+// Install some extensions zenye zitakusaidia: Python (Microsoft), Pylance, Black formatter, isort, REST client
