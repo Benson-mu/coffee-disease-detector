@@ -1,72 +1,109 @@
-import tensorflow as tf
 import os
+# --- CRITICAL FIX: Set the Keras backend to TensorFlow before importing TF or Keras ---
+os.environ["KERAS_BACKEND"] = "tensorflow"
+
+import tensorflow as tf
 import matplotlib.pyplot as plt
-from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2, preprocess_input
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+# We still need MobileNetV2 and its specific preprocessing function
+from keras.applications.mobilenet_v2 import MobileNetV2, preprocess_input
+from keras.layers import Dense, GlobalAveragePooling2D, Dropout
+from keras.models import Model, Sequential
+from keras.optimizers import Adam
+# Removed: from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
 # --- Configuration Constants ---
 IMG_SIZE = (224, 224) # MobileNetV2 expects 224x224 input
 BATCH_SIZE = 32
-DATA_DIR = '../Coffee disease dataset/train' # Path confirmed in previous exchange
-NUM_CLASSES = 7 # Assuming 7 classes (6 diseases + 1 healthy)
+# Ensure this path is correct relative to the 'Backend' folder
+DATA_DIR = '../Coffee disease dataset/train' 
+NUM_CLASSES = 7 
 FINE_TUNE_LAYERS = 50 # Unfreeze the last 50 layers for fine-tuning
 MODEL_SAVE_PATH = 'best_coffee_disease_model.keras'
+AUTOTUNE = tf.data.AUTOTUNE # Optimization constant
 
-# --- 1. Data Loading and Augmentation ---
+# --- Helper function for Data Augmentation (using tf.keras layers) ---
+def get_augmenter():
+    """
+    Creates a Sequential model for on-the-fly data augmentation.
+    """
+    return Sequential([
+        tf.keras.layers.RandomFlip("horizontal"),
+        tf.keras.layers.RandomRotation(0.2),
+        tf.keras.layers.RandomZoom(0.2),
+        tf.keras.layers.RandomTranslation(height_factor=0.2, width_factor=0.2),
+        tf.keras.layers.RandomContrast(0.2),
+    ], name="data_augmenter")
+
+# --- Helper function for Preprocessing and Optimization ---
+def prepare_dataset(ds, is_training=False):
+    """
+    Applies MobileNetV2 preprocessing and optimization steps (caching/prefetching).
+    """
+    # Create the augmentation model
+    augmenter = get_augmenter()
+
+    def apply_preprocessing(image, label):
+        # Apply MobileNetV2 specific preprocessing
+        # Note: Datasets yield integer labels, so we convert them to one-hot encoding here
+        image = preprocess_input(image)
+        label = tf.one_hot(label, depth=NUM_CLASSES)
+        return image, label
+
+    # Apply preprocessing (rescaling, one-hot encoding) to all datasets
+    ds = ds.map(apply_preprocessing, num_parallel_calls=AUTOTUNE)
+
+    if is_training:
+        # Apply augmentation only to the training set
+        def apply_augmentation(image, label):
+            image = augmenter(image, training=True)
+            return image, label
+        ds = ds.map(apply_augmentation, num_parallel_calls=AUTOTUNE)
+        
+    # Cache and prefetch for performance
+    return ds.cache().prefetch(buffer_size=AUTOTUNE)
+
+# --- 1. Data Loading (Using tf.keras.utils.image_dataset_from_directory) ---
 def load_and_augment_data():
     """
-    Sets up data pipelines with augmentation for training and a generator
-    for validation (using a split of the training data).
+    Loads data using the modern tf.data API and applies augmentation.
     """
-    print("Loading data and setting up generators...")
+    print("Loading data and setting up tf.data.Datasets...")
 
-    # Data Augmentation for Training: Crucial for preventing overfitting
-    # Includes standard transformations for robustness
-    train_datagen = ImageDataGenerator(
-        preprocessing_function=preprocess_input,
-        validation_split=0.2, # Use 20% of data for validation
-        rotation_range=30,
-        width_shift_range=0.2,
-        height_shift_range=0.2,
-        shear_range=0.2,
-        zoom_range=0.2,
-        horizontal_flip=True,
-        fill_mode='nearest'
-    )
-
-    # Validation generator (only preprocessing, no augmentation)
-    val_datagen = ImageDataGenerator(
-        preprocessing_function=preprocess_input,
-        validation_split=0.2
-    )
-
-    # Training generator
-    train_generator = train_datagen.flow_from_directory(
+    # Load Training Dataset (80%)
+    train_ds = tf.keras.utils.image_dataset_from_directory(
         DATA_DIR,
-        target_size=IMG_SIZE,
+        labels='inferred',
+        label_mode='int', # Use integer labels first, convert to one-hot later
+        image_size=IMG_SIZE,
         batch_size=BATCH_SIZE,
-        class_mode='categorical',
         subset='training',
-        shuffle=True
+        validation_split=0.2, # Use 20% for validation
+        seed=123
+    )
+    
+    # Load Validation Dataset (20%)
+    validation_ds = tf.keras.utils.image_dataset_from_directory(
+        DATA_DIR,
+        labels='inferred',
+        label_mode='int', 
+        image_size=IMG_SIZE,
+        batch_size=BATCH_SIZE,
+        subset='validation',
+        validation_split=0.2, 
+        seed=123
     )
 
-    # Validation generator
-    validation_generator = val_datagen.flow_from_directory(
-        DATA_DIR,
-        target_size=IMG_SIZE,
-        batch_size=BATCH_SIZE,
-        class_mode='categorical',
-        subset='validation',
-        shuffle=False
-    )
+    # --- FIX: Capture class_names before the dataset is processed and loses the attribute ---
+    class_names = train_ds.class_names 
+    print(f"Detected classes: {class_names}")
+
+    # Apply preprocessing, one-hot conversion, augmentation, caching, and prefetching
+    train_generator = prepare_dataset(train_ds, is_training=True)
+    validation_generator = prepare_dataset(validation_ds, is_training=False)
     
-    print(f"Detected {train_generator.num_classes} classes: {list(train_generator.class_indices.keys())}")
-    
-    return train_generator, validation_generator
+    # Return the processed datasets and the class names list
+    return train_generator, validation_generator, class_names
 
 # --- 2. Model Definition ---
 def build_transfer_model(num_classes):
@@ -98,13 +135,12 @@ def train_model():
     """
     Implements the two-stage training process (Feature Extraction and Fine-Tuning).
     """
-    train_generator, validation_generator = load_and_augment_data()
+    # --- FIX: Unpack the class_names list returned by load_and_augment_data ---
+    train_ds, validation_ds, class_names_list = load_and_augment_data()
     
-    # Check if the number of classes matches the generator output
     global NUM_CLASSES
-    if train_generator.num_classes != NUM_CLASSES:
-        print(f"WARNING: NUM_CLASSES constant ({NUM_CLASSES}) does not match generator output ({train_generator.num_classes}). Adjusting to {train_generator.num_classes}.")
-        NUM_CLASSES = train_generator.num_classes
+    # Infer number of classes from the captured class names list
+    NUM_CLASSES = len(class_names_list) 
 
     model, base_model = build_transfer_model(NUM_CLASSES)
 
@@ -133,10 +169,11 @@ def train_model():
 
     initial_epochs = 10
     
+    # Use the tf.data.Dataset objects for training
     history_feature_extraction = model.fit(
-        train_generator,
+        train_ds,
         epochs=initial_epochs,
-        validation_data=validation_generator,
+        validation_data=validation_ds,
         callbacks=callbacks
     )
 
@@ -173,10 +210,10 @@ def train_model():
     total_epochs = initial_epochs + fine_tune_epochs
 
     history_fine_tune = model.fit(
-        train_generator,
+        train_ds,
         epochs=total_epochs,
         initial_epoch=history_feature_extraction.epoch[-1],
-        validation_data=validation_generator,
+        validation_data=validation_ds,
         callbacks=callbacks_fine_tune
     )
 
@@ -188,6 +225,7 @@ def train_model():
 
 def plot_history(history_1, history_2, total_epochs):
     """Plots training and validation metrics for both phases."""
+    # Ensure history objects are lists of metrics
     acc = history_1.history['accuracy'] + history_2.history['accuracy']
     val_acc = history_1.history['val_accuracy'] + history_2.history['val_accuracy']
 
@@ -215,17 +253,10 @@ def plot_history(history_1, history_2, total_epochs):
     plt.show()
 
 if __name__ == '__main__':
-    # Add the Firebase config setup required for the Canvas environment
-    try:
-        if 'tf.compat.v1.enable_v2_behavior' in dir(tf.compat.v1):
-            tf.compat.v1.enable_v2_behavior()
-    except:
-        pass # Ignore if running in a non-TF environment
-
     # Setting up the environment check
     if not os.path.isdir(DATA_DIR):
         print("ERROR: DATA_DIR not found. Please ensure your dataset folder is structured correctly:")
-        print("The folder 'Cofee disease dataset' must be one level above the 'Backend' folder.")
-        print("Expected path: ../Cofee disease dataset/train")
+        print("The folder 'Coffee disease dataset' must be one level above the 'Backend' folder.")
+        print(f"Expected path: {DATA_DIR}")
     else:
         train_model()
