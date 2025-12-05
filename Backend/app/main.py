@@ -28,9 +28,9 @@ from tensorflow.python.keras.models import load_model
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # --- UPDATED CONFIG FOR COFFEE ---
-MODEL_PATH = "./coffeescan_model_final.h5" 
+MODEL_PATH = "./best_coffee_disease2_model.keras" 
 IMG_HEIGHT = 224 # MobileNetV2 Standard Input
-IMG_WIDTH = 224 # MobileNetV2 Standard Input
+IMG_WIDTH = 224 # MobileNetV2 Standard Input 
 CONFIDENCE_THRESHOLD = 0.70 
 NON_COFFEE_LEAF_CLASS_NAME = "Other_Non_Coffee_Leaf" # Renamed constant
 
