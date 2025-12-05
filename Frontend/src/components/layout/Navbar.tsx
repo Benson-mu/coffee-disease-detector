@@ -8,18 +8,10 @@ const LogOut = lucide.LogOut;
 const Grid = lucide.LayoutGrid;
 
 const Navbar: React.FC<NavbarProps> = ({ userToken, onLogout }) => {
-    // 🛑 START OF MODIFICATION 🛑
-    // To ensure the Navbar component does not render on the dashboard (or anywhere it's used)
-    // and based on the previous context that the Navbar is unwanted, we return null.
-    // If you intend to use this Navbar on OTHER pages (like the landing page) but just
-    // want to ensure it doesn't clash with the DashboardHeader, you MUST handle that 
-    // logic where the component is called/imported (e.g., in App.tsx or Layout.tsx), 
-    // or by adding a prop here (e.g., isDashboard: boolean) and conditionally returning null.
-    // Based purely on your request to remove its appearance, returning null works:
-    return null;
-    // 🛑 END OF MODIFICATION 🛑
 
-    /* The original logic below is now unreachable (dead code) because 'return null;' is the first line. */
+    // 🛑 FIX: The "return null;" statement has been removed. 
+    // The rest of the component logic is now reachable and will render the navbar.
+
     const navigate = useNavigate();
 
     const handleDelayedNavigation = useCallback((e: React.MouseEvent, path: string) => {
