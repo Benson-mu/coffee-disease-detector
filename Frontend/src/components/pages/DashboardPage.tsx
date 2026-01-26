@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Upload, Loader2, User, Settings, LogOut, ChevronDown, Trash2, Star, Zap, History, LayoutDashboard } from 'lucide-react';
+import { Upload, Loader2, LogOut,  Trash2, Star, Zap, History, LayoutDashboard } from 'lucide-react';
 import type { DashboardPageProps, AnalysisResult } from '../../types';
 import { API_BASE_URL } from '../../types';
 import AlertMessage from '../ui/AlertMessage';
@@ -268,7 +268,7 @@ const HistoryPage: React.FC<{
 /* ========================================================================
    5. MAIN CONTROLLER
 ======================================================================== */
-const DashboardPage: React.FC<DashboardPageProps> = ({ userToken, userId, userEmail, onLogout }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ userToken, userEmail, onLogout }) => {
     const [currentView, setCurrentView] = useState<'home' | 'scan' | 'history'>('home');
     const [results, setResults] = useState<AnalysisResult[]>([]);
 

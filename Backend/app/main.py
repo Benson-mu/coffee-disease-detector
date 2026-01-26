@@ -42,7 +42,7 @@ CLASS_NAMES = [
 ]
 
 RECOMMENDATIONS = {
-    # FIX: Keys must match the exact class names (e.g., 'coffee___rust' not 'Coffee Leaf Rust')
+    
     'coffee___rust': "Coffee Leaf Rust (La Roya) detected. Use resistant varieties, apply systemic fungicides, and ensure proper shade management. Action: **Fungicide and Shade Management**",
     'miner': "Coffee Leaf Miner attack. Prune infected leaves, use biological controls (predators/parasites), or targeted insecticides. Action: **Prune and Targeted Insecticides**",
     'phoma': "Phoma Leaf Spot. Reduce canopy density for better airflow, avoid overhead watering, and apply copper-based fungicides if necessary. Action: **Prune and Apply Copper**",
@@ -72,9 +72,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Pydantic Models (UPDATED for Username) ---
+
 class UserRegistration(BaseModel):
-    username: str # Added username field
+    username: str 
     email: str
     password: str
 class UserLogin(BaseModel):
@@ -97,13 +97,13 @@ class PredictionAndSaveResponse(PredictionResponse):
     save_status: str = Field(..., description="Success/Failure status of the DB save operation.")
     scan_id: Optional[int] = Field(None, description="The ID of the saved scan record, if successful.")
 
-# --- Database Connection and Utility Functions (omitted for brevity) ---
+
 
 def initialize_pool():
     global db_pool
     if db_pool is None:
         if not DATABASE_URL:
-            # Enforce DATABASE_URL existence since local fallback was removed
+             
             raise EnvironmentError("DATABASE_URL environment variable is required for production connection.")
             
         try:
@@ -201,24 +201,24 @@ def create_model_architecture(input_shape=(IMG_HEIGHT, IMG_WIDTH, 3), num_classe
     matching the exact head used in train_model.py.
     """
     try:
-        # 1. Load the base MobileNetV2 model pre-trained on ImageNet
+        
         base_model = tf.keras.applications.MobileNetV2(
             input_shape=input_shape,
             include_top=False, 
             weights='imagenet'
         )
-        base_model.trainable = False # Freeze the base layers
+        base_model.trainable = False 
         
-        # 2. Build the custom classification head using the Functional API 
-        #    to exactly match the layers in train_model.py:
-        #    GAP -> Dropout(0.5) -> Dense(256) -> Dropout(0.5) -> Dense(N)
+         
+        
+        
         
         x = base_model.output
-        x = tf.keras.layers.GlobalAveragePooling2D()(x) # Global Average Pooling
-        x = tf.keras.layers.Dropout(0.5)(x)              # First Dropout
-        x = tf.keras.layers.Dense(256, activation='relu')(x) # Dense(256) layer
-        x = tf.keras.layers.Dropout(0.5)(x)              # Second Dropout
-        predictions = tf.keras.layers.Dense(num_classes, activation='softmax')(x) # Final Classification Head
+        x = tf.keras.layers.GlobalAveragePooling2D()(x) 
+        x = tf.keras.layers.Dropout(0.5)(x)              
+        x = tf.keras.layers.Dense(256, activation='relu')(x) 
+        x = tf.keras.layers.Dropout(0.5)(x)              
+        predictions = tf.keras.layers.Dense(num_classes, activation='softmax')(x) 
         
         model = tf.keras.Model(inputs=base_model.input, outputs=predictions)
         

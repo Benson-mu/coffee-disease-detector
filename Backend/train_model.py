@@ -164,22 +164,22 @@ def train_model():
     for layer in base_model.layers[:-FINE_TUNE_LAYERS]:
         layer.trainable = False
 
-    # Ensure the frozen layers are actually non-trainable
-    # NOTE: The print below is informational and can be commented out for clean output
-    # for layer in base_model.layers:
-    #     if layer.name.startswith('block') and layer.trainable:
-    #         print(f"Layer {layer.name} is now trainable for fine-tuning.")
+    
+    
+    
+    
+    
 
 
-    # Compile the model again with a very low learning rate
-    fine_tune_learning_rate = 1e-5 # 0.00001 - 100x smaller than the initial rate
+    
+    fine_tune_learning_rate = 1e-5 
     model.compile(
         optimizer=Adam(learning_rate=fine_tune_learning_rate),
         loss='categorical_crossentropy',
         metrics=['accuracy']
     )
     
-    # Add a learning rate scheduler for fine-tuning
+    
     callbacks_fine_tune = callbacks + [
         ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-7)
     ]
@@ -197,7 +197,7 @@ def train_model():
 
     print(f"\nTraining complete. The best model weights are saved to {MODEL_SAVE_PATH}")
     
-    # Function to plot results (optional but highly recommended)
+    
     plot_history(history_feature_extraction, history_fine_tune, total_epochs)
 
 
@@ -230,23 +230,23 @@ def plot_history(history_1, history_2, total_epochs):
     plt.show()
 
 if __name__ == '__main__':
-    # Add the Firebase config setup required for the Canvas environment
+    
     try:
         if 'tf.compat.v1.enable_v2_behavior' in dir(tf.compat.v1):
             tf.compat.v1.enable_v2_behavior()
     except:
-        pass # Ignore if running in a non-TF environment
+        pass 
 
-    # Setting up the environment check
+    
     if not os.path.isdir(DATA_DIR):
         print("ERROR: DATA_DIR not found. Please ensure your dataset folder is structured correctly:")
         print("The folder 'Cofee disease dataset' must be one level above the 'Backend' folder.")
         print("Expected path: ../Cofee disease dataset/train")
     else:
-        # Added a robust try/except around the train_model call to specifically catch the image error
+       
         try:
             train_model()
         except Exception as e:
-            # We already print a more detailed message in load_and_augment_data, 
-            # this ensures any failure is clearly logged.
+             
+            
             print(f"\n--- FATAL ERROR DURING TRAINING ---\nTraining stopped due to an error: {e}")
