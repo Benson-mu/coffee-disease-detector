@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom'; // Added useLocation
 import * as lucide from 'lucide-react';
 import type { NavbarProps } from '../../types';
 
@@ -10,9 +10,12 @@ const Menu = lucide.Menu;
 const X = lucide.X;
 
 const Navbar: React.FC<NavbarProps> = ({ userToken, onLogout }) => {
-
     const navigate = useNavigate();
+    const location = useLocation(); // Hook to check current path
     const [mobileOpen, setMobileOpen] = useState(false);
+
+    // Check if we are currently on the dashboard page
+    const isDashboard = location.pathname === '/dashboard';
 
     const handleDelayedNavigation = useCallback((e: React.MouseEvent, path: string) => {
         e.preventDefault();
@@ -29,7 +32,7 @@ const Navbar: React.FC<NavbarProps> = ({ userToken, onLogout }) => {
         e.preventDefault();
         const element = document.getElementById(id);
         if (element) element.scrollIntoView({ behavior: 'smooth' });
-        setMobileOpen(false); // Close menu after clicking section
+        setMobileOpen(false); 
     }, []);
 
     return (
@@ -41,28 +44,33 @@ const Navbar: React.FC<NavbarProps> = ({ userToken, onLogout }) => {
                     CoffeeScanAI
                 </Link>
 
-                {/* Desktop Navigation */}
-                <div className="hidden md:flex items-center space-x-16 mx-auto absolute left-1/2 transform -translate-x-1/2">
-                    {['how-it-works','features','why-us','contact'].map(section => (
-                        <Link
-                            key={section}
-                            to={`/#${section}`}
-                            onClick={(e) => scrollToSection(e, section)}
-                            className="text-white text-base py-2 hover:text-amber-400 transition-colors"
-                        >
-                            {section.replace(/-/g,' ').replace(/\b\w/g, l => l.toUpperCase())}
-                        </Link>
-                    ))}
-                </div>
+                {/* Desktop Navigation - ONLY SHOW IF NOT ON DASHBOARD */}
+                {!isDashboard && (
+                    <div className="hidden md:flex items-center space-x-16 mx-auto absolute left-1/2 transform -translate-x-1/2">
+                        {['how-it-works','features','why-us','contact'].map(section => (
+                            <Link
+                                key={section}
+                                to={`/#${section}`}
+                                onClick={(e) => scrollToSection(e, section)}
+                                className="text-white text-base py-2 hover:text-amber-400 transition-colors"
+                            >
+                                {section.replace(/-/g,' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </Link>
+                        ))}
+                    </div>
+                )}
 
                 {/* Auth Buttons (Desktop) */}
                 <div className="hidden sm:flex items-center space-x-4">
                     {userToken ? (
                         <>
-                            <Link to="/dashboard" className="flex items-center space-x-2 px-4 py-2 text-white hover:bg-brown-700 font-bold rounded-lg transition-colors duration-200">
-                                <Grid className="h-5 w-5" />
-                                <span>Dashboard</span>
-                            </Link>
+                            {/* Only show Dashboard link if we aren't already there */}
+                            {!isDashboard && (
+                                <Link to="/dashboard" className="flex items-center space-x-2 px-4 py-2 text-white hover:bg-brown-700 font-bold rounded-lg transition-colors duration-200">
+                                    <Grid className="h-5 w-5" />
+                                    <span>Dashboard</span>
+                                </Link>
+                            )}
                             <button onClick={onLogout} className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white hover:bg-red-700 font-bold rounded-lg shadow-md transition-colors duration-200">
                                 <LogOut className="h-5 w-5" />
                                 <span>Logout</span>
@@ -99,33 +107,37 @@ const Navbar: React.FC<NavbarProps> = ({ userToken, onLogout }) => {
 
             {/* Mobile Dropdown Menu */}
             {mobileOpen && (
-                <div className="md:hidden mt-4 bg-brown-900 rounded-xl shadow-lg p-5 space-y-5 animate-fade-in-down">
-
-                    {/* Sections */}
-                    <div className="flex flex-col space-y-4">
-                        {['how-it-works','features','why-us','contact'].map(section => (
-                            <button
-                                key={section}
-                                onClick={(e) => scrollToSection(e, section)}
-                                className="text-white text-lg text-left hover:text-amber-400 transition-colors"
-                            >
-                                {section.replace(/-/g,' ').replace(/\b\w/g, l => l.toUpperCase())}
-                            </button>
-                        ))}
-                    </div>
+                <div className="md:hidden mt-4 bg-brown-900 rounded-xl shadow-lg p-5 space-y-5">
+                    
+                    {/* Mobile Sections - ONLY SHOW IF NOT ON DASHBOARD */}
+                    {!isDashboard && (
+                        <div className="flex flex-col space-y-4">
+                            {['how-it-works','features','why-us','contact'].map(section => (
+                                <button
+                                    key={section}
+                                    onClick={(e) => scrollToSection(e, section)}
+                                    className="text-white text-lg text-left hover:text-amber-400 transition-colors"
+                                >
+                                    {section.replace(/-/g,' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Auth Buttons */}
                     <div className="border-t border-brown-700 pt-5 flex flex-col space-y-4">
                         {userToken ? (
                             <>
-                                <Link 
-                                    to="/dashboard" 
-                                    onClick={() => setMobileOpen(false)}
-                                    className="flex items-center space-x-2 px-4 py-3 bg-brown-700 text-white rounded-lg font-bold"
-                                >
-                                    <Grid className="h-5 w-5" />
-                                    <span>Dashboard</span>
-                                </Link>
+                                {!isDashboard && (
+                                    <Link 
+                                        to="/dashboard" 
+                                        onClick={() => setMobileOpen(false)}
+                                        className="flex items-center space-x-2 px-4 py-3 bg-brown-700 text-white rounded-lg font-bold"
+                                    >
+                                        <Grid className="h-5 w-5" />
+                                        <span>Dashboard</span>
+                                    </Link>
+                                )}
 
                                 <button 
                                     onClick={() => { onLogout(); setMobileOpen(false); }}
@@ -144,7 +156,6 @@ const Navbar: React.FC<NavbarProps> = ({ userToken, onLogout }) => {
                                 >
                                     Login
                                 </Link>
-
                                 <Link 
                                     to="/register"
                                     onClick={(e) => { handleDelayedNavigation(e, '/register'); setMobileOpen(false); }}
