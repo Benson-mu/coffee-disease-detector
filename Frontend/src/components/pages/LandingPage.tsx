@@ -5,7 +5,7 @@ import AlertMessage from '../ui/AlertMessage';
 import { IconUploadInternal, IconMicroscope, IconCheckCircleInternal, Grid } from '../ui/Icons';
 import DelayedLink from '../ui/DelayedLink';
 
-// Placeholder for your actual background image URL.
+
 import HERO_BG_IMAGE_URL from '../../assets/coffee.jpg'; 
 
 // --- Navigation Bar Component ---
